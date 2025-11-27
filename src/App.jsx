@@ -1,79 +1,62 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, ArrowRight, X, Menu, Terminal, ChevronRight, ChevronLeft, ExternalLink, Calendar, Clock, ArrowUpRight, Instagram, Twitter } from 'lucide-react';
 
-const App = () => {
-  const [activeView, setActiveView] = useState('home'); // home, blog, post
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+// ============================================================================
+//  1. AUTO-LOAD LOGIC (FOR YOUR LOCAL PROJECT)
+//  Action: UNCOMMENT lines 9-14 when running in VS Code/Vite.
+// ============================================================================
 
-  // Mock Data for Blogs
-  const blogPosts = [
-    {
-      id: 1,
-      title: "The Economics of Silence",
-      date: "Oct 12, 2025",
-      readTime: "6 min",
-      type: "long", // 'short' or 'long'
-      excerpt: "In a hyper-connected market, attention is the scarcest currency. What happens to value when we stop producing noise?",
-      category: "Economics",
-      coverImage: "https://picsum.photos/id/45/600/800", 
-      content: `...`
-    },
-    {
-      id: 2,
-      title: "Architecting History",
-      date: "Sept 28, 2025",
-      readTime: "8 min",
-      type: "long",
-      excerpt: "History is not a linear timeline. A structural analysis suggests it is more akin to a recursive loop.",
-      category: "Philosophy",
-      coverImage: "https://picsum.photos/id/249/600/800",
-      content: "..."
-    },
-    {
-      id: 3,
-      title: "Entropy & Order",
-      date: "Aug 15, 2025",
-      readTime: "3 min",
-      type: "short",
-      excerpt: "Why systems fall apart and why the human mind is desperate to categorize the chaos.",
-      category: "Philosophy",
-      coverImage: "https://picsum.photos/id/191/600/800", 
-      content: "..."
-    },
-    {
-      id: 4,
-      title: "Digital Brutalism",
-      date: "July 02, 2025",
-      readTime: "4 min",
-      type: "short",
-      excerpt: "Raw materials, exposed structures, and the rejection of decoration in the modern web.",
-      category: "Design",
-      coverImage: "https://picsum.photos/id/230/600/800",
-      content: "..."
+const modules = import.meta.glob('./posts/*.js', { eager: true });
+
+const blogPosts = Object.keys(modules)
+  .filter(path => !path.includes('_template')) 
+  .map(path => modules[path].default)
+  .sort((a, b) => b.id - a.id); // Sorts descending: ID 10 appears before ID 9
+
+
+
+// Hook to detect when element is in viewport
+const useInView = (options = { threshold: 0.3 }) => {
+  const ref = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsInView(entry.isIntersecting);
+    }, options);
+
+    if (ref.current) {
+      observer.observe(ref.current);
     }
-  ];
 
-  const navigateTo = (view, post = null) => {
-    window.scrollTo(0, 0);
-    setActiveView(view);
-    setSelectedPost(post);
-    setIsMenuOpen(false);
-  };
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current);
+      }
+    };
+  }, [options.threshold]); 
 
-  const SectionHeader = ({ number, title, rightContent }) => (
-    <div className="flex justify-between items-end mb-6 border-b border-stone-900 pb-2">
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-orange-500 text-xs tracking-widest border border-orange-500/30 px-2 py-0.5 rounded-full">{number}</span>
-        <h2 className="font-serif text-xl text-stone-200 tracking-wide">{title}</h2>
-      </div>
-      {rightContent}
+  return [ref, isInView];
+};
+
+// --- SUB-COMPONENTS ---
+
+const SectionHeader = ({ number, title, rightContent }) => (
+  <div className="flex justify-between items-end mb-6 border-b border-stone-900 pb-2">
+    <div className="flex items-center gap-3">
+      <span className="font-mono text-orange-500 text-xs tracking-widest border border-orange-500/30 px-2 py-0.5 rounded-full">{number}</span>
+      <h2 className="font-serif text-xl text-stone-200 tracking-wide">{title}</h2>
     </div>
-  );
+    {rightContent}
+  </div>
+);
 
-  // V3 Component: Cinematic "Story" Card
-  const CinematicCard = ({ post }) => (
+const CinematicCard = ({ post, navigateTo }) => {
+  const [cardRef, isInView] = useInView({ threshold: 0.6 }); 
+
+  return (
     <div 
+      ref={cardRef}
       onClick={() => navigateTo('post', post)}
       className="group relative w-[85vw] md:w-[320px] h-[500px] flex-shrink-0 rounded-lg overflow-hidden cursor-pointer snap-center border border-stone-800/50"
     >
@@ -81,126 +64,244 @@ const App = () => {
         <img 
           src={post.coverImage} 
           alt={post.title} 
-          className="w-full h-full object-cover opacity-80 transition-transform duration-[1.5s] ease-out group-hover:scale-110 group-hover:opacity-60" 
+          className={`w-full h-full object-cover opacity-80 transition-transform duration-[1.5s] ease-out lg:group-hover:scale-110 lg:group-hover:opacity-60 ${isInView ? 'scale-110 opacity-60 lg:scale-100 lg:opacity-80' : 'scale-100 opacity-80'}`} 
         />
       </div>
       <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-80"></div>
       <div className="absolute inset-0 z-20 p-6 flex flex-col justify-end">
-        <div className="absolute top-6 left-6 right-6 flex justify-between items-start opacity-0 -translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 delay-100">
+        
+        <div className={`absolute top-6 left-6 right-6 flex justify-between items-start transition-all duration-700 ease-out 
+            ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}
+            lg:opacity-0 lg:-translate-y-4 lg:group-hover:opacity-100 lg:group-hover:translate-y-0`}
+        >
            <span className="font-mono text-[10px] text-stone-300 bg-stone-900/50 backdrop-blur-md px-2 py-1 rounded border border-stone-700">{post.category}</span>
            <span className="font-mono text-[10px] text-stone-300 bg-stone-900/50 backdrop-blur-md px-2 py-1 rounded border border-stone-700">{post.readTime}</span>
         </div>
-        <div className="transform transition-transform duration-500 group-hover:-translate-y-2">
-          <div className="flex items-center gap-2 mb-2 opacity-70 group-hover:opacity-100 transition-opacity">
+        
+        <div className={`transform transition-all duration-700 ease-out 
+            ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+            lg:opacity-100 lg:translate-y-0 lg:group-hover:-translate-y-2`}
+        >
+          <div className={`flex items-center gap-2 mb-2 transition-opacity lg:opacity-70 lg:group-hover:opacity-100 ${isInView ? 'opacity-100' : 'opacity-70'}`}>
             <span className="w-1 h-1 bg-orange-500 rounded-full"></span>
             <span className="font-mono text-[10px] uppercase tracking-widest text-orange-400">{post.date}</span>
           </div>
+          {/* Use shortTitle for the card, fallback to title */}
           <h3 className="font-serif text-2xl md:text-3xl text-white leading-tight mb-3 drop-shadow-lg">
-            {post.title}
+            {post.shortTitle || post.title}
           </h3>
-          <p className="font-sans text-stone-300 text-sm leading-relaxed line-clamp-2 opacity-0 h-0 group-hover:opacity-100 group-hover:h-auto transition-all duration-500 delay-100">
+          <p className={`font-sans text-stone-300 text-sm leading-relaxed line-clamp-2 transition-all duration-500 delay-100 
+              ${isInView ? 'opacity-100 h-auto' : 'opacity-0'}
+              lg:opacity-0 lg:h-0 lg:group-hover:opacity-100 lg:group-hover:h-auto`}
+          >
             {post.excerpt}
           </p>
         </div>
-        <div className="mt-6 flex items-center gap-2 text-white font-mono text-xs opacity-60 group-hover:opacity-100 transition-opacity">
+        
+        <div className={`mt-6 flex items-center gap-2 text-white font-mono text-xs transition-opacity duration-700 
+            ${isInView ? 'opacity-100' : 'opacity-0'}
+            lg:opacity-60 lg:group-hover:opacity-100`}
+        >
           <span>READ {post.type === 'short' ? 'MEDITATION' : 'ANALYSIS'}</span>
           <ArrowRight size={12} className="transition-transform group-hover:translate-x-1" />
         </div>
       </div>
     </div>
   );
+};
 
-  const FeedCarousel = ({ items }) => {
-    const scrollRef = useRef(null);
+const BottomBox = ({ children, className, href, index, isActive, setRef }) => {
+  const borderColor = isActive ? 'border-orange-500/50 lg:border-stone-800/50' : 'border-stone-800/50';
+  const baseClasses = `block h-full group bg-stone-900/30 border p-8 rounded-xl flex flex-col justify-between transition-all duration-300 cursor-pointer ${className} ${borderColor} lg:hover:border-orange-500/50`;
 
-    const scroll = (direction) => {
-      if(scrollRef.current) {
-        scrollRef.current.scrollBy({ left: direction === 'left' ? -350 : 350, behavior: 'smooth' });
-      }
-    };
-
+  if (href) {
     return (
-      <div className="relative group/carousel">
-        <div 
-          ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {items.map(post => (
-            <CinematicCard key={post.id} post={post} />
-          ))}
-          <div className="w-12 flex-shrink-0"></div>
-        </div>
-
-        {/* Centered Navigation Arrows Below Cards */}
-        <div className="flex justify-center gap-4 mt-6">
-            <button 
-              onClick={() => scroll('left')} 
-              className="p-3 rounded-full border border-stone-800 text-stone-500 hover:text-orange-500 hover:border-orange-500 transition-all active:scale-95"
-            >
-              <ChevronLeft size={20}/>
-            </button>
-            <button 
-              onClick={() => scroll('right')} 
-              className="p-3 rounded-full border border-stone-800 text-stone-500 hover:text-orange-500 hover:border-orange-500 transition-all active:scale-95"
-            >
-              <ChevronRight size={20}/>
-            </button>
-        </div>
-      </div>
+      <a 
+        ref={el => setRef(index, el)} 
+        href={href} 
+        target="_blank" 
+        rel="noreferrer" 
+        className={baseClasses}
+      >
+        {children}
+      </a>
     );
   }
+  
+  return (
+    <div ref={el => setRef(index, el)} className={baseClasses}>
+      {children}
+    </div>
+  );
+};
+
+const FeedCarousel = ({ items, navigateTo }) => {
+  const scrollRef = useRef(null);
+  const [activeBtn, setActiveBtn] = useState(null);
+
+  const scroll = (direction) => {
+    if(scrollRef.current) {
+      scrollRef.current.scrollBy({ left: direction === 'left' ? -350 : 350, behavior: 'smooth' });
+    }
+  };
+
+  const handleMobileInteract = (direction) => {
+    scroll(direction);
+    setActiveBtn(direction);
+    setTimeout(() => setActiveBtn(null), 250); 
+  };
+
+  const btnBaseClass = "p-3 rounded-full border border-stone-800 transition-all duration-300 active:scale-95 lg:hover:text-orange-500 lg:hover:border-orange-500";
+  const getBtnClass = (dir) => {
+    return activeBtn === dir 
+      ? `${btnBaseClass} text-orange-500 border-orange-500` 
+      : `${btnBaseClass} text-stone-500`;
+  };
 
   return (
-    <div className="min-h-screen bg-[#080808] text-stone-300 font-sans selection:bg-orange-500/30 selection:text-orange-200">
+    <div className="relative group/carousel">
+      <div 
+        ref={scrollRef}
+        className="flex gap-6 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {items.map(post => (
+          <CinematicCard key={post.id} post={post} navigateTo={navigateTo} />
+        ))}
+        <div className="w-12 flex-shrink-0"></div>
+      </div>
+
+      <div className="flex justify-center gap-4 mt-6">
+          <button 
+            onClick={() => handleMobileInteract('left')} 
+            className={getBtnClass('left')}
+          >
+            <ChevronLeft size={20}/>
+          </button>
+          <button 
+            onClick={() => handleMobileInteract('right')} 
+            className={getBtnClass('right')}
+          >
+            <ChevronRight size={20}/>
+          </button>
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN APP ---
+
+const App = () => {
+  const [activeView, setActiveView] = useState('home');
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeBottomBoxIndex, setActiveBottomBoxIndex] = useState(null);
+  const bottomSectionRef = useRef(null);
+  const boxRefs = useRef([]);
+
+  // Determine if we are in "Paper Mode" (Reading a post)
+  const isPaperMode = activeView === 'post';
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerWidth >= 1024) return;
+
+      const viewportCenter = window.innerHeight / 2;
+      let minDistance = Infinity;
+      let closestIndex = null;
+
+      boxRefs.current.forEach((el, index) => {
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const elementCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(viewportCenter - elementCenter);
+        const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+        const visiblePercent = Math.max(0, visibleHeight / rect.height);
+
+        if (visiblePercent > 0.5) {
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestIndex = index;
+          }
+        }
+      });
+
+      setActiveBottomBoxIndex(closestIndex);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navigateTo = (view, post = null) => {
+    // Reset scroll when changing views
+    window.scrollTo(0, 0);
+    setActiveView(view);
+    setSelectedPost(post);
+    setIsMenuOpen(false);
+  };
+
+  const setBoxRef = (index, el) => {
+    boxRefs.current[index] = el;
+  };
+
+  return (
+    // ROOT DIV: Handles the Main Theme Transition
+    <div 
+      className={`min-h-screen font-sans transition-colors duration-1000 ease-in-out 
+        ${isPaperMode 
+          ? 'bg-[#f5f5f4] text-stone-800 selection:bg-blue-200 selection:text-blue-900' 
+          : 'bg-[#080808] text-stone-300 selection:bg-orange-500/30 selection:text-orange-200'
+        }`}
+    >
       
-      {/* Subtle Noise Texture */}
+      {/* Noise Texture (Subtle in both modes) */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.02] mix-blend-overlay" 
            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
       </div>
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/80 backdrop-blur-md border-b border-stone-900/50">
+      {/* Navigation - Adaptive Colors */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-1000 
+          ${isPaperMode ? 'bg-[#f5f5f4]/80 border-stone-200' : 'bg-[#080808]/80 border-stone-900/50'}`}>
+        
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div onClick={() => navigateTo('home')} className="cursor-pointer group flex items-center gap-3">
-             <div className="w-3 h-3 bg-orange-600 rounded-sm group-hover:rotate-45 transition-transform duration-300"></div>
-             <div className="font-serif text-xl text-stone-200 tracking-tight group-hover:text-white transition-colors">
+             <div className={`w-3 h-3 rounded-sm group-hover:rotate-45 transition-transform duration-300 ${isPaperMode ? 'bg-blue-700' : 'bg-orange-600'}`}></div>
+             <div className={`font-serif text-xl tracking-tight transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-200 group-hover:text-white'}`}>
               RVH
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-10 font-mono text-xs tracking-widest text-stone-500">
-            <button onClick={() => navigateTo('home')} className={`hover:text-stone-200 transition-colors ${activeView === 'home' ? 'text-white' : ''}`}>INDEX</button>
-            <button onClick={() => navigateTo('blog')} className={`hover:text-stone-200 transition-colors ${activeView === 'blog' ? 'text-white' : ''}`}>ARCHIVE</button>
-            <a href="https://notion.so" target="_blank" rel="noreferrer" className="hover:text-stone-200 transition-colors flex items-center gap-2">
+          <div className={`hidden md:flex items-center gap-10 font-mono text-xs tracking-widest transition-colors duration-1000 ${isPaperMode ? 'text-stone-500' : 'text-stone-500'}`}>
+            {/* Nav links: Hover becomes BLUE (blue-800) in paper mode, NEON (orange-600) in dark mode */}
+            <button onClick={() => navigateTo('home')} className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${activeView === 'home' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>INDEX</button>
+            <button onClick={() => navigateTo('blog')} className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${activeView === 'blog' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>ARCHIVE</button>
+            <a href="https://notion.so" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'}`}>
               BOOK DATABASE <ArrowUpRight size={10} />
             </a>
           </div>
 
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden text-stone-300">
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`md:hidden transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-300'}`}>
             {isMenuOpen ? <X /> : <Menu />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-[#080808] pt-24 px-6 md:hidden animate-fade-in">
+        <div className={`fixed inset-0 z-40 pt-24 px-6 md:hidden animate-fade-in ${isPaperMode ? 'bg-[#f5f5f4]' : 'bg-[#080808]'}`}>
           <div className="flex flex-col gap-8 font-serif text-3xl">
-            <button onClick={() => navigateTo('home')} className="text-left text-stone-200">Index</button>
-            <button onClick={() => navigateTo('blog')} className="text-left text-stone-200">Archive</button>
+            <button onClick={() => navigateTo('home')} className={`text-left ${isPaperMode ? 'text-stone-900' : 'text-stone-200'}`}>Index</button>
+            <button onClick={() => navigateTo('blog')} className={`text-left ${isPaperMode ? 'text-stone-900' : 'text-stone-200'}`}>Archive</button>
             <button className="text-left text-stone-500">Book Database</button>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-20">
+      <main className="relative z-10 w-full pt-32 pb-20">
         
-        {/* VIEW: HOME */}
         {activeView === 'home' && (
-          <div className="animate-fade-in">
-            {/* HERO SECTION */}
+          <div className="animate-fade-in px-6 max-w-7xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 mb-20 items-center">
               <div className="lg:col-span-7">
                 
@@ -209,22 +310,15 @@ const App = () => {
                   <span className="text-stone-500 italic">a curious mind.</span>
                 </h1>
 
-                {/* System Status Interaction */}
                 <div className="group w-fit cursor-default mb-8">
                   <div className="font-mono text-xs md:text-sm text-orange-500 flex items-center gap-2 overflow-hidden relative border border-orange-900/30 bg-orange-900/10 px-3 py-1 rounded-full transition-all duration-300">
-                     
-                     {/* The "Invisible" element determines width. Added nbsp for extra padding on right. */}
                      <span className="invisible pointer-events-none opacity-0 flex items-center gap-2">
                        <span>{'>_'}</span> The art of thinking out loud&nbsp;&nbsp;
                      </span>
-                     
-                     {/* The Visible Status (Initial) */}
                     <div className="absolute top-0 left-3 bottom-0 flex items-center gap-2 transition-all duration-500 transform group-hover:-translate-y-8 opacity-100 group-hover:opacity-0">
                        <Terminal size={12} />
                        <span>SYSTEM STATUS: ONLINE</span>
                     </div>
-
-                    {/* The Hover Text (All Orange Now) */}
                     <div className="absolute top-0 left-3 bottom-0 flex items-center transition-all duration-500 transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 whitespace-nowrap text-orange-500">
                       <span className="font-mono mr-2">{'>_'}</span>
                       <span className="italic">The art of thinking out loud</span>
@@ -234,14 +328,12 @@ const App = () => {
 
               </div>
 
-               {/* Hero Visual Restored */}
-               <div className="lg:col-span-5 hidden lg:block">
-                  <div className="relative h-96 w-full border border-stone-800 bg-stone-900 rounded-lg overflow-hidden group">
+               <div className="lg:col-span-5 mt-6 lg:mt-0">
+                  <div className="relative h-64 md:h-96 w-full border border-stone-800 bg-stone-900 rounded-lg overflow-hidden group">
                      <div className="absolute inset-0 bg-stone-900/20 z-10 group-hover:bg-transparent transition-all duration-700"></div>
-                     {/* Grid Overlay */}
                      <div className="absolute inset-0 z-20 bg-[linear-gradient(rgba(12,12,12,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(12,12,12,0.1)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
                      <img 
-                        src="https://picsum.photos/id/17/800/800" 
+                        src="/perspective4.png" 
                         alt="Observation Deck" 
                         className="w-full h-full object-cover grayscale opacity-70 mix-blend-screen group-hover:scale-105 transition-transform duration-[2s]" 
                      />
@@ -252,122 +344,116 @@ const App = () => {
                </div>
             </div>
 
-            {/* CONTENT GRID */}
             <div className="border-t border-stone-900 pt-12 mb-20">
                <SectionHeader number="01" title="Recent Transmissions" />
-               <FeedCarousel items={blogPosts} />
+               <FeedCarousel items={blogPosts} navigateTo={navigateTo} />
             </div>
 
-            {/* BOTTOM GRID (Profile & Info) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div ref={bottomSectionRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 gap-y-24">
                
-               {/* 02 Profile Card (Updated for Congruency & Gap Fix) */}
                <div>
                   <SectionHeader number="02" title="The Profile" />
-                  <a 
-                    href="https://www.instagram.com/rafaelvonhertzen/" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="block h-full group bg-stone-900/30 border border-stone-800/50 p-8 rounded-xl flex flex-col justify-between hover:border-orange-500/50 transition-all duration-300 cursor-pointer"
+                  <BottomBox 
+                    href="https://www.instagram.com/rafaelvonhertzen/"
+                    index={0}
+                    isActive={activeBottomBoxIndex === 0}
+                    setRef={setBoxRef}
                   >
                     <div>
                         <div className="flex justify-between items-start mb-6">
-                            {/* Profile Image: No border, grayscale transition to color on group hover */}
                             <div className="w-16 h-16 rounded-full overflow-hidden">
                                 <img 
-                                  src="https://picsum.photos/id/338/200/200" 
+                                  src="/profile.jpeg" 
                                   alt="Rafael"
-                                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" 
+                                  className={`w-full h-full object-cover grayscale transition-all duration-500 ${activeBottomBoxIndex === 0 ? 'grayscale-0 lg:grayscale' : ''} lg:group-hover:grayscale-0`} 
                                 />
                             </div>
-                            {/* Top Right Icon: Hidden ArrowUpRight */}
-                            <ArrowUpRight size={16} className="text-stone-600 group-hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100" />
+                            
+                            <ArrowUpRight size={16} className={`transition-all duration-300 ${activeBottomBoxIndex === 0 ? 'opacity-100 text-orange-500' : 'opacity-0 text-stone-600'} lg:opacity-0 lg:text-stone-600 lg:group-hover:opacity-100 lg:group-hover:text-orange-500`} />
                         </div>
                         
-                        <h3 className="font-serif text-xl text-stone-200 mb-2 group-hover:text-white transition-colors">Rafael von Hertzen</h3>
-                        <p className="font-sans text-stone-400 text-sm leading-relaxed group-hover:text-stone-300">
-                            Writing to understand, not to instruct. Nothing groundbreaking, just ideas worth capturing.
+                        <h3 className={`font-serif text-xl text-stone-200 mb-2 transition-colors ${activeBottomBoxIndex === 0 ? 'text-white lg:text-stone-200' : 'text-stone-200'} lg:group-hover:text-white`}>Rafael von Hertzen</h3>
+                        
+                        <p className={`font-sans text-stone-400 text-sm leading-relaxed transition-colors ${activeBottomBoxIndex === 0 ? 'text-stone-300 lg:text-stone-400' : 'text-stone-400'} lg:group-hover:text-stone-300`}>
+                            I write to process the world, not to instruct. These are not lessons, but personal signals captured from the noise.
                         </p>
                     </div>
 
-                    {/* Bottom Action */}
-                    <div className="mt-6 flex items-center gap-2 font-mono text-xs text-stone-500 group-hover:text-orange-500 transition-colors">
+                    <div className={`mt-6 flex items-center gap-2 font-mono text-xs transition-colors duration-300 ${activeBottomBoxIndex === 0 ? 'text-orange-500' : 'text-stone-500'} lg:text-stone-500 lg:group-hover:text-orange-500`}>
                         VISIT PROFILE <ArrowRight size={12}/>
                     </div>
-                  </a>
+                  </BottomBox>
                </div>
 
-               {/* 03 Database Card */}
                <div>
-                  <SectionHeader number="03" title="The Library" />
-                  <a 
+                  <SectionHeader number="03" title="The Input" />
+                  <BottomBox 
                     href="https://www.notion.so/Book-Database-645e72649a4a4d9abd53c6e3e5391f13?source=copy_link"
-                    target="_blank"
-                    rel="noreferrer" 
-                    className="block h-full group bg-stone-900/30 border border-stone-800/50 p-8 rounded-xl hover:border-orange-500/50 transition-all duration-300 cursor-pointer flex flex-col justify-between"
-                    >
+                    index={1}
+                    isActive={activeBottomBoxIndex === 1}
+                    setRef={setBoxRef}
+                  >
                     <div>
                         <div className="flex justify-between items-start mb-6">
-                            <BookOpen size={24} className="text-stone-600 group-hover:text-orange-500 transition-colors" />
-                            <ArrowUpRight size={16} className="text-stone-600 group-hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100" />
+                            <BookOpen size={24} className={`transition-colors duration-300 ${activeBottomBoxIndex === 1 ? 'text-orange-500' : 'text-stone-600'} lg:text-stone-600 lg:group-hover:text-orange-500`} />
+                            <ArrowUpRight size={16} className={`transition-all duration-300 ${activeBottomBoxIndex === 1 ? 'opacity-100 text-orange-500' : 'opacity-0 text-stone-600'} lg:opacity-0 lg:text-stone-600 lg:group-hover:opacity-100 lg:group-hover:text-orange-500`} />
                         </div>
-                        <h3 className="font-serif text-xl text-stone-200 mb-2 group-hover:text-white transition-colors">
-                            Digital Garden
+                        <h3 className={`font-serif text-xl text-stone-200 mb-2 transition-colors ${activeBottomBoxIndex === 1 ? 'text-white lg:text-stone-200' : 'text-stone-200'} lg:group-hover:text-white`}>
+                            Digital Library
                         </h3>
-                        <p className="font-sans text-stone-400 text-sm leading-relaxed group-hover:text-stone-300">
-                        A collection of books read, rated, and annotated.
+                        <p className={`font-sans text-stone-400 text-sm leading-relaxed transition-colors ${activeBottomBoxIndex === 1 ? 'text-stone-300 lg:text-stone-400' : 'text-stone-400'} lg:group-hover:text-stone-300`}>
+                        An archive of inputs. Every book I've read in the past few years, accompanied by ratings and raw notes—some extensive, others not.
                         </p>
                     </div>
-                    <div className="mt-6 flex items-center gap-2 font-mono text-xs text-stone-500 group-hover:text-orange-500 transition-colors">
+                    <div className={`mt-6 flex items-center gap-2 font-mono text-xs transition-colors duration-300 ${activeBottomBoxIndex === 1 ? 'text-orange-500' : 'text-stone-500'} lg:text-stone-500 lg:group-hover:text-orange-500`}>
                         OPEN DATABASE <ArrowRight size={12}/>
                     </div>
-                  </a>
+                  </BottomBox>
                </div>
 
-               {/* 04 Work/Percept Card */}
                <div>
-                 <SectionHeader number="04" title="The Work" />
-                 <a 
+                 <SectionHeader number="04" title="The Output" />
+                 <BottomBox 
                     href="https://percepthelsinki.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block h-full group bg-stone-900/30 border border-stone-800/50 p-8 rounded-xl flex flex-col justify-between hover:border-orange-500/50 transition-all duration-300 cursor-pointer"
-                    >
+                    index={2}
+                    isActive={activeBottomBoxIndex === 2}
+                    setRef={setBoxRef}
+                 >
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <ExternalLink size={24} className="text-stone-600 group-hover:text-orange-500 transition-colors" />
-                            <ArrowUpRight size={16} className="text-stone-600 group-hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100" />
+                            <ExternalLink size={24} className={`transition-colors duration-300 ${activeBottomBoxIndex === 2 ? 'text-orange-500' : 'text-stone-600'} lg:text-stone-600 lg:group-hover:text-orange-500`} />
+                            <ArrowUpRight size={16} className={`transition-all duration-300 ${activeBottomBoxIndex === 2 ? 'opacity-100 text-orange-500' : 'opacity-0 text-stone-600'} lg:opacity-0 lg:text-stone-600 lg:group-hover:opacity-100 lg:group-hover:text-orange-500`} />
                         </div>
-                        <h3 className="font-serif text-xl text-stone-200 mb-2 group-hover:text-white transition-colors">Percept Helsinki</h3>
-                        <p className="font-sans text-stone-400 text-sm group-hover:text-stone-300">
-                        Strategic Design. Visual identity and digital experience.
+                        <h3 className={`font-serif text-xl text-stone-200 mb-2 transition-colors ${activeBottomBoxIndex === 2 ? 'text-white lg:text-stone-200' : 'text-stone-200'} lg:group-hover:text-white`}>Percept Helsinki</h3>
+                        <p className={`font-sans text-stone-400 text-sm transition-colors ${activeBottomBoxIndex === 2 ? 'text-stone-300 lg:text-stone-400' : 'text-stone-400'} lg:group-hover:text-stone-300`}>
+                        What I work on every day. A home decor brand designed for men. Built from scratch as a solopreneur to six-figure annual revenue.
                         </p>
                     </div>
-                    <div className="mt-6 flex items-center gap-2 font-mono text-xs text-stone-500 group-hover:text-orange-500 transition-colors">
+                    <div className={`mt-6 flex items-center gap-2 font-mono text-xs transition-colors duration-300 ${activeBottomBoxIndex === 2 ? 'text-orange-500' : 'text-stone-500'} lg:text-stone-500 lg:group-hover:text-orange-500`}>
                         VISIT SITE <ArrowRight size={12}/>
                     </div>
-                 </a>
+                 </BottomBox>
                </div>
 
             </div>
           </div>
         )}
 
-        {/* VIEW: BLOG LIST */}
+        {/* VIEW: BLOG LIST - ADAPTED FOR PAPER MODE */}
         {activeView === 'blog' && (
-          <div className="animate-fade-in max-w-5xl mx-auto">
-             {/* List View Implementation (Simpler for Archive) */}
+          <div className="animate-fade-in px-6 max-w-5xl mx-auto">
              <div className="space-y-8">
                {blogPosts.map(post => (
-                 <div key={post.id} onClick={() => navigateTo('post', post)} className="group cursor-pointer border-b border-stone-900 pb-8">
+                 <div key={post.id} onClick={() => navigateTo('post', post)} className={`group cursor-pointer border-b pb-8 ${isPaperMode ? 'border-stone-300' : 'border-stone-900'}`}>
                     <div className="flex flex-col md:flex-row gap-8">
                        <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
                           <img src={post.coverImage} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
                        </div>
                        <div>
-                          <div className="font-mono text-xs text-orange-500 mb-2">{post.date}</div>
-                          <h2 className="font-serif text-3xl text-stone-300 group-hover:text-white mb-3">{post.title}</h2>
-                          <p className="text-stone-500 text-sm max-w-2xl">{post.excerpt}</p>
+                          {/* Use blue-800 for paper mode text accent */}
+                          <div className={`font-mono text-xs mb-2 ${isPaperMode ? 'text-blue-800' : 'text-orange-600'}`}>{post.date}</div>
+                          <h2 className={`font-serif text-3xl mb-3 transition-colors ${isPaperMode ? 'text-stone-900 group-hover:text-blue-800' : 'text-stone-300 group-hover:text-white'}`}>{post.title}</h2>
+                          <p className={`text-sm max-w-2xl ${isPaperMode ? 'text-stone-600' : 'text-stone-500'}`}>{post.excerpt}</p>
                        </div>
                     </div>
                  </div>
@@ -376,49 +462,59 @@ const App = () => {
           </div>
         )}
 
-        {/* VIEW: SINGLE POST */}
+        {/* VIEW: SINGLE POST - PAPER MODE */}
         {activeView === 'post' && selectedPost && (
-          <article className="animate-fade-in max-w-3xl mx-auto">
-            <button onClick={() => navigateTo('home')} className="group mb-12 flex items-center gap-2 font-mono text-xs text-stone-500 hover:text-orange-500 transition-colors">
-              <ArrowRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={14} />
-              RETURN TO INDEX
-            </button>
+          <article className="animate-fade-in w-full">
+            {/* Wider Container for Header */}
+            <div className="max-w-4xl mx-auto px-6">
+              {/* Button Hover: Blue in paper mode */}
+              <button onClick={() => navigateTo('home')} className={`group mb-12 flex items-center gap-2 font-mono text-xs transition-colors ${isPaperMode ? 'text-stone-500 hover:text-blue-800' : 'text-stone-500 hover:text-orange-500'}`}>
+                <ArrowRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={14} />
+                RETURN TO INDEX
+              </button>
 
-            <header className="mb-12 text-center">
-              <div className="inline-flex gap-4 font-mono text-xs text-orange-500 mb-6 border border-stone-800 rounded-full px-4 py-1">
-                <span>{selectedPost.category.toUpperCase()}</span>
-                <span className="text-stone-700">|</span>
-                <span>{selectedPost.date}</span>
+              <header className="mb-12 text-center max-w-4xl mx-auto">
+                {/* Category Pill: Blue border/text in paper mode */}
+                <div className={`inline-flex gap-4 font-mono text-xs mb-6 border rounded-full px-4 py-1 ${isPaperMode ? 'text-blue-800 border-blue-300 bg-blue-50' : 'text-orange-600 border-stone-800'}`}>
+                  <span>{selectedPost.category.toUpperCase()}</span>
+                  <span className="text-stone-400">|</span>
+                  <span>{selectedPost.date}</span>
+                </div>
+                <h1 className={`font-serif text-4xl md:text-6xl leading-tight mb-8 ${isPaperMode ? 'text-stone-900' : 'text-stone-100'}`}>
+                  {selectedPost.title}
+                </h1>
+              </header>
+              
+              <div className="mb-16 w-full aspect-video rounded-xl overflow-hidden shadow-lg">
+                <img src={selectedPost.coverImage} alt={selectedPost.title} className="w-full h-full object-cover" />
               </div>
-              <h1 className="font-serif text-4xl md:text-6xl text-stone-100 leading-tight mb-8">
-                {selectedPost.title}
-              </h1>
-            </header>
-            
-            <div className="mb-16 w-full aspect-video rounded-xl overflow-hidden">
-               <img src={selectedPost.coverImage} alt={selectedPost.title} className="w-full h-full object-cover" />
             </div>
 
-            <div className="prose prose-invert prose-stone max-w-none prose-lg prose-headings:font-serif prose-p:font-sans prose-p:text-stone-300 prose-p:leading-8">
-               {/* Content */}
-               <div dangerouslySetInnerHTML={{ __html: selectedPost.content }} />
-               <p>This is a placeholder for the full article text. The design focuses on readability with ample whitespace and carefully selected typography.</p>
-               <p>Ideally, this section would be populated from a Markdown file or a CMS like Contentful or Sanity.</p>
+            {/* Narrower container for reading text */}
+            <div className="max-w-2xl mx-auto px-6">
+              {/* Prose Content: Using 'marker:text-blue-800' for list bullets in paper mode */}
+              <div className={`prose prose-lg md:prose-xl max-w-none prose-headings:font-serif prose-p:font-sans prose-p:leading-loose transition-colors duration-1000
+                ${isPaperMode 
+                  ? 'prose-headings:text-stone-900 prose-p:text-stone-800 prose-li:text-stone-800 prose-strong:text-stone-900 marker:text-blue-800' 
+                  : 'prose-headings:text-white prose-p:text-gray-300 prose-li:text-gray-300 prose-strong:text-white marker:text-orange-600'
+                }`}>
+                <div dangerouslySetInnerHTML={{ __html: selectedPost.content }} />
+              </div>
             </div>
           </article>
         )}
 
       </main>
 
-      <footer className="border-t border-stone-900 mt-20 py-12">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-stone-600 text-sm font-mono">
+      <footer className={`border-t mt-20 py-12 transition-colors duration-1000 ${isPaperMode ? 'border-stone-300' : 'border-stone-900'}`}>
+        <div className={`max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm font-mono transition-colors ${isPaperMode ? 'text-stone-500' : 'text-stone-600'}`}>
           <div>RVH © 2025 // HELSINKI</div>
           
           <div className="flex gap-6">
-            <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className="hover:text-orange-500 transition-colors flex items-center gap-2">
+            <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
               <Twitter size={14}/> X (TWITTER)
             </a>
-            <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className="hover:text-orange-500 transition-colors flex items-center gap-2">
+            <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
               <Instagram size={14}/> INSTAGRAM
             </a>
           </div>
