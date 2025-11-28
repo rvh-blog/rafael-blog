@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sun, CloudRain, CloudSnow, CloudFog, CloudLightning } from 'lucide-react';
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
-const NOTION_DB_ID = '2b970823d45180fc9cb0e876e170c039'; 
-const NOTION_KEY = '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'; 
-// ==========================================
-
 const SolidCloudIcon = ({ size = 14, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
     <path d="M6.5 19C4.01472 19 2 16.9853 2 14.5C2 12.1564 3.79151 10.2313 6.07974 10.0194C6.54781 7.17213 9.02024 5 12 5C14.9798 5 17.4522 7.17213 17.9203 10.0194C20.2085 10.2313 22 12.1564 22 14.5C22 16.9853 19.9853 19 17.5 19H6.5Z" />
@@ -41,23 +34,16 @@ const LiveFooterData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const notionRes = await fetch(`https://corsproxy.io/?https://api.notion.com/v1/databases/${NOTION_DB_ID}/query`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${NOTION_KEY}`,
-            'Notion-Version': '2022-06-28',
-            'Content-Type': 'application/json'
-          }
-        });
-        const notionData = await notionRes.json();
-        let targetCity = 'HELSINKI';
-        if (notionData.results && notionData.results.length > 0) {
-           const cityValue = notionData.results[0].properties.City?.rich_text[0]?.plain_text;
-           if (cityValue) targetCity = cityValue;
-        }
+        // 1. Fetch from our local JSON file instead of Notion
+        // The timestamp query param (?t=...) prevents the browser from caching the old city
+        const statusRes = await fetch(`/status.json?t=${new Date().getTime()}`);
+        const statusData = await statusRes.json();
+        const targetCity = statusData.city || 'HELSINKI';
 
+        // 2. Geocoding (Same as before)
         const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${targetCity}&count=1&language=en&format=json`);
         const geoData = await geoRes.json();
+        
         if (geoData.results && geoData.results.length > 0) {
           const location = geoData.results[0];
           const newLocation = {
@@ -68,6 +54,7 @@ const LiveFooterData = () => {
           };
           setLocationData(newLocation);
           
+          // 3. Weather (Same as before)
           const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${newLocation.lat}&longitude=${newLocation.lon}&current_weather=true`);
           const weatherData = await weatherRes.json();
           setWeather(weatherData.current_weather);
@@ -97,7 +84,6 @@ const LiveFooterData = () => {
   }, [locationData]); 
 
   return (
-    // Removed md:text-xs. Kept h-5 to align strictly with copyright text.
     <div 
       className="cursor-default flex items-center gap-2 h-5 text-sm"
       onMouseEnter={() => setIsHovered(true)}
@@ -113,7 +99,6 @@ const LiveFooterData = () => {
             {'//'}
         </span>
 
-        {/* Reduced width from w-28 to w-24 to tighten the visual center */}
         <div className="relative h-5 overflow-hidden w-24">
             <div className={`absolute left-0 top-0 w-full h-full flex items-center transition-transform duration-500 ${isHovered ? '-translate-y-full' : 'translate-y-0'}`}>
                 {time}
