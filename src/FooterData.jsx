@@ -18,7 +18,8 @@ const getWeatherIcon = (code) => {
     return <SolidCloudIcon size={iconSize} />;
   };
 
-const LiveFooterData = () => {
+// We now accept 'isPaperMode' as a prop
+const LiveFooterData = ({ isPaperMode }) => {
   const [locationData, setLocationData] = useState({
     city: 'HELSINKI',
     lat: 60.1699,
@@ -34,13 +35,10 @@ const LiveFooterData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Fetch from our local JSON file instead of Notion
-        // The timestamp query param (?t=...) prevents the browser from caching the old city
         const statusRes = await fetch(`/status.json?t=${new Date().getTime()}`);
         const statusData = await statusRes.json();
         const targetCity = statusData.city || 'HELSINKI';
 
-        // 2. Geocoding (Same as before)
         const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${targetCity}&count=1&language=en&format=json`);
         const geoData = await geoRes.json();
         
@@ -54,7 +52,6 @@ const LiveFooterData = () => {
           };
           setLocationData(newLocation);
           
-          // 3. Weather (Same as before)
           const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${newLocation.lat}&longitude=${newLocation.lon}&current_weather=true`);
           const weatherData = await weatherRes.json();
           setWeather(weatherData.current_weather);
@@ -83,15 +80,21 @@ const LiveFooterData = () => {
     return () => clearInterval(timer);
   }, [locationData]); 
 
+  // Define dynamic colors based on mode
+  const dotColor = isPaperMode ? 'bg-blue-700' : 'bg-orange-500';
+  const textColor = isPaperMode ? 'text-blue-800' : 'text-orange-500';
+
   return (
     <div 
       className="cursor-default flex items-center gap-2 h-5 text-sm"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-        <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-stone-600' : 'bg-orange-500'} animate-pulse flex-shrink-0`}></span>
+        {/* 1. Dynamic Dot Color */}
+        <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-stone-600' : dotColor} animate-pulse flex-shrink-0`}></span>
 
-        <span className={`uppercase tracking-wide transition-colors duration-300 ${isHovered ? 'text-orange-500' : ''}`}>
+        {/* 2. City Name (Dynamic Hover Color) */}
+        <span className={`uppercase tracking-wide transition-colors duration-300 ${isHovered ? textColor : ''}`}>
             {isLoading ? 'LOCATING...' : locationData.city}
         </span>
 
@@ -104,7 +107,8 @@ const LiveFooterData = () => {
                 {time}
             </div>
 
-            <div className={`absolute left-0 top-0 w-full h-full flex items-center gap-2 text-orange-500 transition-transform duration-500 ${isHovered ? 'translate-y-0' : '-translate-y-full'}`}>
+            {/* 3. Weather Data (Dynamic Text Color) */}
+            <div className={`absolute left-0 top-0 w-full h-full flex items-center gap-2 ${textColor} transition-transform duration-500 ${isHovered ? 'translate-y-0' : '-translate-y-full'}`}>
                 {weather ? (
                 <>
                     <span>{weather.temperature}°</span>

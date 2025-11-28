@@ -541,7 +541,8 @@ const Layout = ({ children }) => {
           {/* GROUP 1: RVH + Location */}
           <div className="contents md:flex md:flex-row md:gap-12 md:items-center">
             <div className="whitespace-nowrap">RVH © 2025</div>
-            <LiveFooterData />
+            {/* Added the isPaperMode prop here! */}
+            <LiveFooterData isPaperMode={isPaperMode} />
           </div>
           
           {/* GROUP 2: Social Links */}
