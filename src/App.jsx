@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowRight, X, Menu, Terminal, ChevronRight, ChevronLeft, ExternalLink, ArrowUpRight, Instagram, Twitter } from 'lucide-react';
+import LiveFooterData from './FooterData'; // Adjust path if needed
 
 // ============================================================================
 //  1. DATA LOADING
@@ -530,20 +531,31 @@ const Layout = ({ children }) => {
       </main>
 
       <footer className={`border-t mt-20 py-12 transition-colors duration-1000 ${isPaperMode ? 'border-stone-300' : 'border-stone-900'}`}>
-        <div className={`max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm font-mono transition-colors ${isPaperMode ? 'text-stone-500' : 'text-stone-600'}`}>
-          <div>RVH © 2025 // HELSINKI</div>
+        {/* FIXES:
+            1. 'text-sm': Restored standard size (removed text-xs).
+            2. 'whitespace-nowrap': Keeps links solid.
+            3. 'X / TWITTER': Shorter text helps it fit at the larger size.
+        */}
+        <div className={`max-w-7xl mx-auto px-6 overflow-x-hidden grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-2 pl-8 md:pl-0 md:flex md:flex-row md:justify-between md:items-center text-sm font-mono transition-colors ${isPaperMode ? 'text-stone-500' : 'text-stone-600'}`}>
           
-          <div className="flex gap-6">
-            <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
-              <Twitter size={14}/> X (TWITTER)
+          {/* GROUP 1: RVH + Location */}
+          <div className="contents md:flex md:flex-row md:gap-12 md:items-center">
+            <div className="whitespace-nowrap">RVH © 2025</div>
+            <LiveFooterData />
+          </div>
+          
+          {/* GROUP 2: Social Links */}
+          <div className="contents md:flex md:flex-row md:gap-6 md:items-center">
+            <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
+              <Twitter size={14}/> X / TWITTER
             </a>
-            <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
+            <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
               <Instagram size={14}/> INSTAGRAM
             </a>
           </div>
+
         </div>
-      </footer>
-    </div>
+      </footer>    </div>
   );
 }
 
