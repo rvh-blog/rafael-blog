@@ -1,3 +1,10 @@
+# 🎛️ Control Panel
+
+[📍 **UPDATE LIVE LOCATION**](https://github.com/rvh-blog/rafael-blog/edit/main/public/status.json)
+
+---------------------------------
+
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
