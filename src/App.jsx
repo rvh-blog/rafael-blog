@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowRight, X, Menu, Terminal, ChevronRight, ChevronLeft, ExternalLink, ArrowUpRight, Instagram, Twitter } from 'lucide-react';
 import LiveFooterData from './FooterData'; // Adjust path if needed
+import ReactMarkdown from 'react-markdown';
 
 // ============================================================================
 //  1. DATA LOADING
@@ -471,7 +472,12 @@ const BlogPostView = () => {
 const Layout = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const isPaperMode = location.pathname.includes('/post/');
+
+  // CHECK: Are we in the editor?
+  const isEditor = location.pathname === '/editor';
+  
+  // LOGIC: Editor counts as 'Paper Mode' (Light theme)
+  const isPaperMode = location.pathname.includes('/post/') || isEditor;
 
   return (
     <div 
@@ -485,80 +491,409 @@ const Layout = ({ children }) => {
            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
       </div>
 
-      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-1000 
-          ${isPaperMode ? 'bg-[#f5f5f4]/80 border-stone-200' : 'bg-[#080808]/80 border-stone-900/50'}`}>
-        
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="cursor-pointer group flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-sm group-hover:rotate-45 transition-transform duration-300 ${isPaperMode ? 'bg-blue-700' : 'bg-orange-600'}`}></div>
-              <div className={`font-serif text-xl tracking-tight transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-200 group-hover:text-white'}`}>
-               RVH
-             </div>
-          </Link>
+      {/* CHANGE 1: Only show Navbar if NOT in editor */}
+      {!isEditor && (
+        <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b transition-colors duration-1000 
+            ${isPaperMode ? 'bg-[#f5f5f4]/80 border-stone-200' : 'bg-[#080808]/80 border-stone-900/50'}`}>
+          
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <Link to="/" className="cursor-pointer group flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-sm group-hover:rotate-45 transition-transform duration-300 ${isPaperMode ? 'bg-blue-700' : 'bg-orange-600'}`}></div>
+                <div className={`font-serif text-xl tracking-tight transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-200 group-hover:text-white'}`}>
+                 RVH
+                </div>
+            </Link>
 
-          <div className={`hidden md:flex items-center gap-10 font-mono text-xs tracking-widest transition-colors duration-1000 ${isPaperMode ? 'text-stone-500' : 'text-stone-500'}`}>
-            <Link to="/" className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${location.pathname === '/' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>INDEX</Link>
-            <Link to="/blog" className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${location.pathname === '/blog' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>ARCHIVE</Link>
-            <a href="https://notion.so" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'}`}>
-              BOOK DATABASE <ArrowUpRight size={10} />
-            </a>
+            <div className={`hidden md:flex items-center gap-10 font-mono text-xs tracking-widest transition-colors duration-1000 ${isPaperMode ? 'text-stone-500' : 'text-stone-500'}`}>
+              <Link to="/" className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${location.pathname === '/' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>INDEX</Link>
+              <Link to="/blog" className={`transition-colors ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'} ${location.pathname === '/blog' ? (isPaperMode ? 'text-stone-900' : 'text-white') : ''}`}>ARCHIVE</Link>
+              <a href="https://notion.so" target="_blank" rel="noreferrer" className={`transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-600'}`}>
+                BOOK DATABASE <ArrowUpRight size={10} />
+              </a>
+            </div>
+
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`md:hidden transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-300'}`}>
+              {isMenuOpen ? <X /> : <Menu />}
+            </button>
           </div>
+        </nav>
+      )}
 
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`md:hidden transition-colors duration-1000 ${isPaperMode ? 'text-stone-900' : 'text-stone-300'}`}>
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
+      {/* Mobile Menu Logic */}
+      {isMenuOpen && !isEditor && (
         <div className={`fixed inset-0 z-40 pt-24 px-6 md:hidden animate-fade-in ${isPaperMode ? 'bg-[#f5f5f4]' : 'bg-[#080808]'}`}>
           <div className="flex flex-col gap-8 font-serif text-3xl">
             <Link to="/" onClick={() => setIsMenuOpen(false)} className={`text-left ${isPaperMode ? 'text-stone-900' : 'text-stone-200'}`}>Index</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className={`text-left ${isPaperMode ? 'text-stone-900' : 'text-stone-200'}`}>Archive</Link>
-            
-            {/* UPDATED MOBILE LINK with Arrow */}
             <a href="https://notion.so" target="_blank" rel="noreferrer" onClick={() => setIsMenuOpen(false)} className="text-left text-stone-500 flex items-center gap-2">
               Book Database <ArrowUpRight size={16} />
             </a>
-
           </div>
         </div>
       )}
 
-      <main className="relative z-10 w-full pt-32 pb-20">
+      {/* CHANGE 2: Remove top padding when in Editor so it uses the full screen */}
+      <main className={`relative z-10 w-full ${isEditor ? '' : 'pt-32 pb-20'}`}>
         {children}
       </main>
 
-      <footer className={`border-t mt-20 py-12 transition-colors duration-1000 ${isPaperMode ? 'border-stone-300' : 'border-stone-900'}`}>
-        {/* FIXES:
-            1. 'text-sm': Restored standard size (removed text-xs).
-            2. 'whitespace-nowrap': Keeps links solid.
-            3. 'X / TWITTER': Shorter text helps it fit at the larger size.
-        */}
-        <div className={`max-w-7xl mx-auto px-6 overflow-x-hidden grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-2 pl-8 md:pl-0 md:flex md:flex-row md:justify-between md:items-center text-sm font-mono transition-colors ${isPaperMode ? 'text-stone-500' : 'text-stone-600'}`}>
-          
-          {/* GROUP 1: RVH + Location */}
-          <div className="contents md:flex md:flex-row md:gap-12 md:items-center">
-            <div className="whitespace-nowrap">RVH © 2025</div>
-            {/* Added the isPaperMode prop here! */}
-            <LiveFooterData isPaperMode={isPaperMode} />
+      {/* CHANGE 3: Hide Footer if in editor */}
+      {!isEditor && (
+        <footer className={`border-t mt-20 py-12 transition-colors duration-1000 ${isPaperMode ? 'border-stone-300' : 'border-stone-900'}`}>
+          <div className={`max-w-7xl mx-auto px-6 overflow-x-hidden grid grid-cols-[auto_auto] justify-start gap-x-6 gap-y-2 pl-8 md:pl-0 md:flex md:flex-row md:justify-between md:items-center text-sm font-mono transition-colors ${isPaperMode ? 'text-stone-500' : 'text-stone-600'}`}>
+            <div className="contents md:flex md:flex-row md:gap-12 md:items-center">
+              <div className="whitespace-nowrap">RVH © 2025</div>
+              <LiveFooterData isPaperMode={isPaperMode} />
+            </div>
+            
+            <div className="contents md:flex md:flex-row md:gap-6 md:items-center">
+              <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
+                <Twitter size={14}/> X / TWITTER
+              </a>
+              <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
+                <Instagram size={14}/> INSTAGRAM
+              </a>
+            </div>
           </div>
-          
-          {/* GROUP 2: Social Links */}
-          <div className="contents md:flex md:flex-row md:gap-6 md:items-center">
-            <a href="https://x.com/rafael_v_h" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
-              <Twitter size={14}/> X / TWITTER
-            </a>
-            <a href="https://www.instagram.com/rafaelvonhertzen/" target="_blank" rel="noreferrer" className={`whitespace-nowrap transition-colors flex items-center gap-2 ${isPaperMode ? 'hover:text-blue-800' : 'hover:text-orange-500'}`}>
-              <Instagram size={14}/> INSTAGRAM
-            </a>
-          </div>
-
-        </div>
-      </footer>    </div>
+        </footer>
+      )}
+    </div>
   );
 }
+
+// ============================================================================
+//  6. LIVE EDITOR (UPDATED: Single Screen & Toolbar)
+// ============================================================================
+
+const LiveEditor = () => {
+  const [mode, setMode] = useState('edit'); 
+  const [content, setContent] = useState("##### This is an Intro Paragraph.\n\nIt is larger and uses a serif font.\n\nThis is a standard body paragraph. It is smaller and uses the default font.");
+  
+  // --- NEW CODE START ---
+  // SCROLL SYNC STATE & REFS
+  const [scrollRatio, setScrollRatio] = useState(0);
+  const fileInputRef = useRef(null);
+  const scrollContainerRef = useRef(null); // Tracks the outer preview window
+  const textareaRef = useRef(null);        // Tracks the raw text input
+  // --- NEW CODE END ---
+
+  // --------------------------------------------------------------------------
+  // A. THE COMPONENT MAPPING
+  // --------------------------------------------------------------------------
+  const components = {
+    // 1. HEADERS
+    h1: ({node, ...props}) => <h1 className="font-serif text-4xl md:text-6xl leading-tight mb-8 text-stone-900" {...props} />,
+    h2: ({node, ...props}) => <h2 className="text-3xl font-serif text-stone-900 mt-16 mb-8 font-bold" {...props} />,
+    h3: ({node, ...props}) => <h3 className="text-3xl font-serif text-stone-900 mt-16 mb-8 font-bold" {...props} />,
+    
+    // 2. SPECIAL HEADERS
+    h4: ({node, ...props}) => <h4 className="text-2xl font-serif text-stone-800 mt-12 mb-6 italic" {...props} />,
+    
+    // 3. SPECIAL PARAGRAPHS
+    // H5 = Intro Paragraph
+    h5: ({node, ...props}) => <p className="mb-8 font-serif text-xl leading-relaxed text-gray-800" {...props} />,
+    // H6 = Captions
+    h6: ({node, ...props}) => <p className="text-sm text-stone-500 mt-0 mb-8 text-center italic leading-normal" {...props} />,
+
+    // 4. STANDARD TEXT & LISTS
+    p: ({node, ...props}) => <p className="mb-8 text-gray-800 leading-relaxed" {...props} />,
+    ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-8 space-y-4 marker:text-blue-800 text-gray-800" {...props} />,    li: ({node, ...props}) => <li className="pl-2" {...props} />,
+    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-800 pl-4 italic text-stone-600 my-8" {...props} />,
+    strong: ({node, ...props}) => <strong className="font-bold text-stone-900" {...props} />,
+    
+    // 5. IMAGES
+    img: ({node, ...props}) => (
+      <img 
+        className="w-full rounded-lg mt-8 mb-2 shadow-md" 
+        {...props} 
+        alt={props.alt || "Blog Image"}
+      />
+    ),
+  };
+
+  // --------------------------------------------------------------------------
+  // B. TOOLBAR ACTIONS
+  // --------------------------------------------------------------------------
+  const insertText = (prefix, suffix = '') => {
+    const textarea = document.getElementById('editor-textarea');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = content.substring(start, end);
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+
+    const newText = before + prefix + text + suffix + after;
+    setContent(newText);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 10);
+  };
+
+  const insertImage = () => {
+    const url = prompt("Enter Image Path (e.g. /my-image.jpg):");
+    if(url) insertText(`![Image Description](${url})`);
+  };
+
+  // --------------------------------------------------------------------------
+  // C. IMPORT / EXPORT LOGIC
+  // --------------------------------------------------------------------------
+  
+  // 1. Export HTML
+  const copyHTML = () => {
+    if (mode === 'edit') {
+      alert("Please switch to PREVIEW mode first to generate the HTML code.");
+      return;
+    }
+    const html = document.getElementById('preview-content').innerHTML;
+    navigator.clipboard.writeText(html);
+    alert("HTML Content copied! Ready to paste into your posts.js file.");
+  };
+
+  // 2. Save Draft (MD)
+  const copyMarkdown = () => {
+    navigator.clipboard.writeText(content);
+    alert("Raw Markdown copied! Save this in a .txt or .md file to resume later.");
+  };
+
+  // 3. Import HTML (The "Reverse" Button)
+  const importHTML = () => {
+    const htmlInput = prompt("Paste your raw HTML content string here:");
+    if (!htmlInput) return;
+
+    // Use Browser's DOMParser to convert HTML string to DOM elements
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlInput, 'text/html');
+    
+    let markdown = "";
+
+    // Walk through nodes and convert back to Markdown
+    Array.from(doc.body.childNodes).forEach(node => {
+        if (node.nodeType !== 1) return; // Skip non-elements
+        
+        const tagName = node.tagName.toLowerCase();
+        const classes = node.className || "";
+        // Clean innerHTML: remove newlines, basic bold tags replacement
+        let text = node.innerHTML.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        text = text.replace(/<strong>(.*?)<\/strong>/g, "**$1**").replace(/<b>(.*?)<\/b>/g, "**$1**");
+        text = text.replace(/<em>(.*?)<\/em>/g, "*$1*").replace(/<i>(.*?)<\/i>/g, "*$1*");
+
+        if (tagName === 'h1') markdown += `# ${node.innerText}\n\n`;
+        else if (tagName === 'h2') markdown += `## ${node.innerText}\n\n`;
+        else if (tagName === 'h3') markdown += `### ${node.innerText}\n\n`;
+        else if (tagName === 'h4') markdown += `#### ${node.innerText}\n\n`; // Usually unused but safe
+        
+        else if (tagName === 'p') {
+            if (classes.includes('text-xl')) {
+                 // Intro Paragraph (h5)
+                 markdown += `##### ${text}\n\n`;
+            } else if (classes.includes('text-sm')) {
+                 // Caption (h6)
+                 markdown += `###### ${node.innerText}\n\n`; // Use innerText for captions to strip nested tags
+            } else if (classes.includes('text-2xl') && classes.includes('italic')) {
+                // Italic Subheader (h4) - In case you used P tags for headers before
+                 markdown += `#### ${node.innerText}\n\n`;
+            } else {
+                 // Standard Paragraph
+                 markdown += `${text}\n\n`;
+            }
+        } 
+        else if (tagName === 'ul') {
+            Array.from(node.children).forEach(li => {
+                markdown += `- ${li.innerText.trim()}\n`;
+            });
+            markdown += '\n';
+        } 
+        else if (tagName === 'img') {
+            const src = node.getAttribute('src');
+            const alt = node.getAttribute('alt') || "";
+            markdown += `![${alt}](${src})\n\n`;
+        } 
+        else if (tagName === 'blockquote') {
+            markdown += `> ${node.innerText.trim()}\n\n`;
+        }
+    });
+
+    setContent(markdown);
+    setMode('edit');
+  };
+
+  // 4. Load Draft (File)
+  const triggerFileUpload = () => { if (fileInputRef.current) fileInputRef.current.click(); };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setContent(e.target.result);
+      setMode('edit');
+      event.target.value = ''; 
+    };
+    reader.readAsText(file);
+  };
+
+  // --------------------------------------------------------------------------
+  // D. RENDER
+  // --------------------------------------------------------------------------
+  
+  // 1. EDIT MODE STYLES:
+  //    - 'max-w-3xl': Wider for writing comfort
+  //    - 'bg-white shadow-sm': Looks like a document/sheet of paper
+  //    - 'py-12 px-8': Internal padding for the textarea
+  //    - 'my-8': Floats it in the middle of the screen
+  const editContainerClass = "max-w-3xl mx-auto py-12 px-8 min-h-full bg-white shadow-sm my-8 rounded-lg";
+
+  // 2. PREVIEW MODE STYLES:
+  //    - 'max-w-2xl': Matches your 'BlogPostView' width exactly
+  //    - 'bg-transparent shadow-none': Removes the "sheet of paper" look
+  //    - 'pt-24': Adds top padding to simulate the website header space
+  //    - 'px-6': Matches the padding in 'BlogPostView'
+  const previewContainerClass = "max-w-2xl mx-auto pt-24 pb-20 px-6 min-h-full bg-transparent shadow-none border-none";
+
+  // --------------------------------------------------------------------------
+  // E. SCROLL SYNC LOGIC (NEW)
+  // --------------------------------------------------------------------------
+  
+  const handleModeSwitch = (newMode) => {
+    // 1. Calculate percentage (0 to 1) of current scroll position
+    let ratio = 0;
+    
+    // If leaving EDIT mode, check the textarea
+    if (mode === 'edit' && textareaRef.current) {
+        const el = textareaRef.current;
+        if (el.scrollHeight > el.clientHeight) {
+            ratio = el.scrollTop / (el.scrollHeight - el.clientHeight);
+        }
+    } 
+    // If leaving PREVIEW mode, check the outer container
+    else if (mode === 'preview' && scrollContainerRef.current) {
+        const el = scrollContainerRef.current;
+        if (el.scrollHeight > el.clientHeight) {
+            ratio = el.scrollTop / (el.scrollHeight - el.clientHeight);
+        }
+    }
+    
+    setScrollRatio(ratio);
+    setMode(newMode);
+  };
+
+  useLayoutEffect(() => {
+    // 2. Restore scroll position based on the calculated ratio
+    // We wait 10ms to allow React to render the new view first
+    setTimeout(() => {
+        if (mode === 'edit' && textareaRef.current) {
+            const el = textareaRef.current;
+            el.scrollTop = scrollRatio * (el.scrollHeight - el.clientHeight);
+        } else if (mode === 'preview' && scrollContainerRef.current) {
+            const el = scrollContainerRef.current;
+            el.scrollTop = scrollRatio * (el.scrollHeight - el.clientHeight);
+        }
+    }, 10);
+  }, [mode, scrollRatio]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-[#f5f5f4] flex flex-col font-sans">
+      
+      {/* Hidden File Input */}
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".md,.txt,.js" className="hidden" />
+
+      {/* TOOLBAR (Unchanged) */}
+      <div className="h-16 border-b border-stone-300 bg-stone-200 flex items-center justify-between px-6 flex-shrink-0">
+        
+        {/* Left: Styling Tools */}
+        <div className="flex items-center gap-2">
+           <span className="font-mono text-xs font-bold text-stone-500 mr-2 hidden md:block">FORMAT:</span>
+           <button onClick={() => insertText('##### ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs font-bold font-serif text-blue-900" title="Intro Paragraph">Intro</button>
+           <div className="w-px h-6 bg-stone-300 mx-1"></div>
+           <button onClick={() => insertText('## ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs font-bold font-serif" title="Main Section">H2</button>
+           <button onClick={() => insertText('### ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs font-bold font-serif" title="Sub Section">H3</button>
+           <button onClick={() => insertText('#### ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs italic font-serif" title="Italic Header">H4</button>
+           <div className="w-px h-6 bg-stone-300 mx-1"></div>
+           <button onClick={() => insertText('**', '**')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs font-bold" title="Bold">B</button>
+           <button onClick={() => insertText('> ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs italic font-serif" title="Quote">""</button>
+           <button onClick={() => insertText('- ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs" title="List">List</button>
+           <div className="w-px h-6 bg-stone-300 mx-1"></div>
+           <button onClick={insertImage} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs" title="Insert Image">IMG</button>
+           <button onClick={() => insertText('###### ')} className="px-2 py-1 bg-white border border-stone-300 rounded hover:bg-stone-100 text-xs text-stone-500 italic" title="Image Caption">Cap</button>
+        </div>
+
+        {/* Center: Mode Toggle */}
+        <div className="flex bg-stone-300 p-1 rounded-lg">
+          <button 
+            onClick={() => handleModeSwitch('edit')} // CHANGED THIS
+            className={`px-4 md:px-6 py-1 rounded-md text-xs md:text-sm font-mono transition-all ${mode === 'edit' ? 'bg-white shadow text-black' : 'text-stone-600 hover:text-black'}`}
+          >
+            WRITE
+          </button>
+          <button 
+            onClick={() => handleModeSwitch('preview')} // CHANGED THIS
+            className={`px-4 md:px-6 py-1 rounded-md text-xs md:text-sm font-mono transition-all ${mode === 'preview' ? 'bg-white shadow text-black' : 'text-stone-600 hover:text-black'}`}
+          >
+            PREVIEW
+          </button>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 md:gap-4">
+           
+           {/* FILE ACTIONS GROUP */}
+           <div className="flex items-center gap-1">
+             <button onClick={importHTML} className="px-3 py-1 bg-stone-100 border border-stone-300 rounded text-stone-600 hover:bg-white text-xs font-mono" title="Convert HTML string to Markdown">
+                IMPORT HTML
+             </button>
+             <button onClick={triggerFileUpload} className="px-3 py-1 bg-stone-100 border border-stone-300 rounded text-stone-600 hover:bg-white text-xs font-mono" title="Load .md file">
+                LOAD
+             </button>
+             <button onClick={copyMarkdown} className="px-3 py-1 bg-stone-100 border border-stone-300 rounded text-stone-600 hover:bg-white text-xs font-mono" title="Copy Markdown to Clipboard">
+                SAVE MD
+             </button>
+           </div>
+           
+           <div className="w-px h-6 bg-stone-300"></div>
+
+           <button onClick={copyHTML} className="bg-blue-800 text-white px-4 py-2 rounded font-mono text-xs hover:bg-blue-900 transition-colors shadow-lg">
+            EXPORT HTML
+          </button>
+          
+           <a href="/" className="font-mono text-xs text-red-600 hover:underline ml-2">EXIT</a>
+        </div>
+      </div>
+
+      {/* EDITOR / PREVIEW AREA */}
+      {/* ADD ref={scrollContainerRef} HERE: */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto"> 
+        
+        <div className={mode === 'edit' ? editContainerClass : previewContainerClass}>
+            
+            {mode === 'edit' && (
+              <textarea
+                ref={textareaRef} // ADD ref={textareaRef} HERE
+                id="editor-textarea"
+                className="w-full h-[80vh] outline-none resize-none font-mono text-sm text-stone-800 leading-relaxed bg-transparent"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="# Start writing..."
+                spellCheck={false}
+              />
+            )}
+
+            {mode === 'preview' && (
+              <div id="preview-content" className="animate-fade-in">
+                <ReactMarkdown components={components}>
+                  {content}
+                </ReactMarkdown>
+              </div>
+            )}
+
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const App = () => {
   return (
@@ -570,6 +905,7 @@ const App = () => {
           <Route path="/" element={<HomeView />} />
           <Route path="/blog" element={<BlogIndexView />} />
           <Route path="/post/:id" element={<BlogPostView />} />
+          <Route path="/editor" element={<LiveEditor />} />
         </Routes>
       </Layout>
     </BrowserRouter>
