@@ -32,7 +32,7 @@ export default {
 <li class="pl-2">Religion is outdated; purpose is something you create, not something you are given.</li>
 </ul>
 <p class="mb-8 text-gray-800 leading-relaxed">For most of us alive today, this feels simply like the way things are. But these ideas aren't self-evident truths.</p>
-<p class="mb-8 text-gray-800 leading-relaxed">So where did they come from?&lt;br&gt;Why do we believe all this?&lt;br&gt;Should we still continue to have these beliefs?</p>
+<p class="mb-8 text-gray-800 leading-relaxed">So where did they come from?<br />Why do we believe all this?<br />Should we still continue to have these beliefs?</p>
 <p class="mb-8 text-gray-800 leading-relaxed">Let's break it down.</p>
 <h3 class="text-3xl font-serif text-stone-900 mt-16 mb-8 font-bold">Part I: The Architects of the Modern Mind</h3>
 <h4 class="text-2xl font-serif text-stone-800 mt-12 mb-6 italic">Reality: Where These Beliefs Came From</h4>
